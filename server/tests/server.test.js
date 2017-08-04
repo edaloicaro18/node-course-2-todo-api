@@ -10,8 +10,10 @@ const todos = [{
     text: 'First test todo'
 }, {
     _id: new ObjectID(),
-    text: 'Second test todo'
-}]
+    text: 'Second test todo',
+    completed: true,
+    completedAt: 333
+}];
 
 
 beforeEach((done) => {
@@ -136,5 +138,55 @@ describe('DELETE /todos/:id', () => {
             .delete(`/todos/${notValidId}`)
             .expect(404)
             .end(done);
+    });
+});
+
+describe('PATCH /todos/:id', () => {
+    it('should update the todo', done => {
+        const hexId = todos[0]._id.toHexString();
+        const body = {
+            text: 'Update from test suite',
+            completed: true
+        };
+        request(app)
+            .patch(`/todos/${hexId}`)
+            .send(body)
+            .expect(200)
+            .end((err, res) => {
+                if (err) {
+                    return done(err);
+                }
+                Todo.findById(hexId).then(todo => {
+                    expect(todo.text).toBe(body.text);
+                    expect(todo.completed).toBe(true);
+                    expect(todo.completedAt).toBeA('number');
+                    done();
+                }).catch(e => done(e));
+            });
+    });
+
+    it('should clear completedAt when todo is not completed', done => {
+        const hexId = todos[1]._id.toHexString();
+        const body = {
+            text: 'Update second item from test suite 2',
+            completed: false
+        };
+        request(app)
+            .patch(`/todos/${hexId}`)
+            .send(body)
+            .expect(200)
+            .end((err, res) => {
+                //Why sometimes it test only what it comes back from the server and other times he has to query the db?
+                //I think the correct way would be to just test what comes back from the server since we're testing an API
+                if (err) {
+                    return done(err);
+                }
+                Todo.findById(hexId).then(todo => {
+                    expect(todo.text).toBe(body.text);
+                    expect(todo.completed).toBe(false);
+                    expect(todo.completedAt).toNotExist()
+                    done();
+                }).catch(e => done(e));
+            });
     });
 });
